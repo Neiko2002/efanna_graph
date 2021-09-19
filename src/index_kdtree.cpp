@@ -325,20 +325,22 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 		  tree_roots_.push_back(node);
 		  ActiveSet.push_back(node);
 	  }
+	  std::random_device rd;
+	  std::mt19937 gen{rd()};
 
 #pragma omp parallel for
-	  for(unsigned i = 0; i < N; i++)indices[i] = i;
+	  for(int64_t i = 0; i < N; i++)indices[i] = i;
 #pragma omp parallel for
-	  for(unsigned i = 0; i < (unsigned)TreeNum; i++){
+	  for(int64_t i = 0; i < (unsigned)TreeNum; i++){
 		  std::vector<unsigned>& myids = LeafLists[i];
 		  myids.resize(N);
 		  std::copy(indices.begin(), indices.end(),myids.begin());
-		  std::random_shuffle(myids.begin(), myids.end());
+		  std::shuffle(myids.begin(), myids.end(), gen);
 	  }
 	  omp_init_lock(&rootlock);
 	  while(!ActiveSet.empty() && ActiveSet.size() < 1100){
 #pragma omp parallel for
-		  for(unsigned i = 0; i < ActiveSet.size(); i++){
+		  for(int64_t i = 0; i < ActiveSet.size(); i++){
 			  Node* node = ActiveSet[i];
 			  unsigned mid;
 			  unsigned cutdim;
@@ -371,7 +373,7 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 	  }
 
 #pragma omp parallel for
-	  for(unsigned i = 0; i < ActiveSet.size(); i++){
+	  for(int64_t i = 0; i < ActiveSet.size(); i++){
 		  Node* node = ActiveSet[i];
 		  //omp_set_lock(&rootlock);
 		  //std::cout<<i<<":"<<node->EndIdx-node->StartIdx<<std::endl;
@@ -393,7 +395,7 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 	  }
 
 #pragma omp parallel for
-	  for(size_t i = 0; i < mlNodeList.size(); i++){
+	  for(int64_t i = 0; i < mlNodeList.size(); i++){
 		  mergeSubGraphs(mlNodeList[i].second, mlNodeList[i].first);
 	  }
 

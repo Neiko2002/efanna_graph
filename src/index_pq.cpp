@@ -26,7 +26,7 @@ void IndexPQ::compute_gt_for_tune(const float* q,
                         const unsigned k,
                          unsigned *gt){
 #pragma omp parallel for
-  for(unsigned i=0; i<nq; i++){
+  for(int64_t i=0; i<nq; i++){
     std::vector<Neighbor> res;
     for(unsigned j=0; j<nd_; j++){
       float dist = distance_->compare(q + i * dimension_, data_ + j * dimension_, dimension_);

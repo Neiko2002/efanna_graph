@@ -12,11 +12,19 @@
 
 namespace efanna2e {
 #define _CONTROL_NUM 100
+
 IndexGraph::IndexGraph(const size_t dimension, const size_t n, Metric m, Index *initializer)
     : Index(dimension, n, m),
       initializer_{initializer} {
   assert(dimension == initializer->GetDimension());
 }
+
+IndexGraph::IndexGraph(const float* data, const size_t dimension, const size_t n, Metric m, Index *initializer)
+    : Index(dimension, n, m), initializer_{initializer} {
+  assert(dimension == initializer->GetDimension());
+  data_ = data;
+}
+
 IndexGraph::~IndexGraph() {}
 
 void IndexGraph::join() {
@@ -272,7 +280,7 @@ void IndexGraph::Build(size_t n, const float *data, const Parameters &parameters
 
   InitializeGraph(parameters);
   NNDescent(parameters);
-  //RefineGraph(parameters);
+  //RefineGraph(data, parameters);
 
   final_graph_.reserve(nd_);
   std::cout << nd_ << std::endl;
@@ -295,12 +303,7 @@ void IndexGraph::Build(size_t n, const float *data, const Parameters &parameters
   has_built = true;
 }
 
-void IndexGraph::Search(
-    const float *query,
-    const float *x,
-    size_t K,
-    const Parameters &parameter,
-    unsigned *indices) {
+void IndexGraph::Search(const float *query, const float *x, size_t K, const Parameters &parameter, unsigned *indices) {
   const unsigned L = parameter.Get<unsigned>("L_search");
 
   std::vector<Neighbor> retset(L+1);
@@ -376,6 +379,8 @@ void IndexGraph::Load(const char *filename) {
     in.read((char*)final_graph_[i].data(), k * sizeof(unsigned));
   }
   in.close();
+
+  has_built = true;
 }
 
 void IndexGraph::parallel_graph_insert(unsigned id, Neighbor nn, LockGraph& g, size_t K){

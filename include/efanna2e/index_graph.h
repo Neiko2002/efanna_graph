@@ -23,7 +23,7 @@ namespace efanna2e {
 class IndexGraph : public Index {
  public:
   explicit IndexGraph(const size_t dimension, const size_t n, Metric m, Index *initializer);
-
+  explicit IndexGraph(const float* data, const size_t dimension, const size_t n, Metric m, Index *initializer);
 
   virtual ~IndexGraph();
 
@@ -42,6 +42,10 @@ class IndexGraph : public Index {
 
   void GraphAdd(const float* data, unsigned n, unsigned dim, const Parameters &parameters);
   void RefineGraph(const float* data, const Parameters &parameters);
+
+  std::vector<std::vector<unsigned>>& getCompactGraph() {
+    return final_graph_;
+  }
 
  protected:
   typedef std::vector<nhood> KNNGraph;

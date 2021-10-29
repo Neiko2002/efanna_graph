@@ -41,7 +41,6 @@ namespace efanna2e {
       #endif
       #endif
 
-      std::cout << "align with : "<<DATA_ALIGN_FACTOR << std::endl;
       float* data_new=0;
       unsigned new_dim = (dim + DATA_ALIGN_FACTOR - 1) / DATA_ALIGN_FACTOR * DATA_ALIGN_FACTOR;
       //std::cout << "align to new dim: "<<new_dim << std::endl;

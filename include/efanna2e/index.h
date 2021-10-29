@@ -20,7 +20,6 @@ class Index {
  public:
   explicit Index(const size_t dimension, const size_t n, Metric metric);
 
-
   virtual ~Index();
 
   virtual void Build(size_t n, const float *data, const Parameters &parameters) = 0;

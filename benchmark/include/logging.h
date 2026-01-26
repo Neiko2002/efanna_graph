@@ -12,6 +12,7 @@ namespace efanna::benchmark {
 
 inline std::ofstream log_file_stream;
 inline bool log_to_console = true;
+inline std::streambuf* cout_buffer_backup = nullptr;
 inline std::streambuf* cerr_buffer_backup = nullptr;
 
 class TeeBuf : public std::streambuf {
@@ -39,6 +40,7 @@ private:
     std::streambuf* sb2_;
 };
 
+inline std::unique_ptr<TeeBuf> cout_tee_buf;
 inline std::unique_ptr<TeeBuf> cerr_tee_buf;
 
 inline void set_log_file(const std::string& path, bool append = false) {
@@ -74,8 +76,28 @@ inline void detach_cerr_from_log() {
     }
 }
 
+inline void attach_cout_to_log() {
+    if (!log_file_stream.is_open()) {
+        return;
+    }
+    if (cout_buffer_backup == nullptr) {
+        cout_buffer_backup = std::cout.rdbuf();
+        cout_tee_buf = std::make_unique<TeeBuf>(cout_buffer_backup, log_file_stream.rdbuf());
+        std::cout.rdbuf(cout_tee_buf.get());
+    }
+}
+
+inline void detach_cout_from_log() {
+    if (cout_buffer_backup != nullptr) {
+        std::cout.rdbuf(cout_buffer_backup);
+        cout_buffer_backup = nullptr;
+        cout_tee_buf.reset();
+    }
+}
+
 inline void reset_log_to_console() {
     detach_cerr_from_log();
+    detach_cout_from_log();
     if (log_file_stream.is_open()) {
         log_file_stream.close();
     }
@@ -100,13 +122,20 @@ inline std::string string_format(const char* fmt, Args&&... args) {
 template<typename... Args>
 inline void log(const char* fmt, Args&&... args) {
     const std::string msg = string_format(fmt, std::forward<Args>(args)...);
-    if (log_to_console) {
+    
+    if (cout_buffer_backup != nullptr) {
+        // If cout is redirected to TeeBuf, writing to cout already writes to log_file_stream
         std::cout << msg;
         std::cout.flush();
-    }
-    if (log_file_stream.is_open()) {
-        log_file_stream << msg;
-        log_file_stream.flush();
+    } else {
+        if (log_to_console) {
+            std::cout << msg;
+            std::cout.flush();
+        }
+        if (log_file_stream.is_open()) {
+            log_file_stream << msg;
+            log_file_stream.flush();
+        }
     }
 }
 

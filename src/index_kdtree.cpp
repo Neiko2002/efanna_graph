@@ -404,7 +404,7 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 	  for(int64_t i = 0; i < mlNodeList.size(); i++){
 		  mergeSubGraphs(mlNodeList[i].second, mlNodeList[i].first);
 
-		  if(i % 100 == 0) {
+		  if(i % 10000 == 0) {
 		  	elapsed_time = std::chrono::high_resolution_clock::now() - s;
 		  	std::cout << "merge sub graph " << i << " after "  << elapsed_time.count() << " secs\n";
 		  }

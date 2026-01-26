@@ -1,9 +1,9 @@
 #ifndef EFANNA_VALUE_TYPE
-#define EFANNA_VALUE_TYPE float
+    #define EFANNA_VALUE_TYPE float
 #endif
 
 #ifdef _OPENMP
-#include <omp.h>
+    #include <omp.h>
 #endif
 
 #include <filesystem>
@@ -16,7 +16,6 @@
 #include "dataset.h"
 #include "logging.h"
 #include "statistics.h"
-#include "stopwatch.h"
 
 using namespace efanna::benchmark;
 
@@ -161,27 +160,19 @@ struct GraphPaths {
     GraphPaths(const Dataset& ds) : graph_dir(ds.data_root() / ds.name() / "efanna") {}
 
     std::string base_name(const CreateGraphParams& cg) const {
-        return string_format("K%u_L%u_It%u_S%u_R%u_(nTrees%u_mLevel%u)", 
-            cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
+        return string_format("K%u_L%u_It%u_S%u_R%u_(nTrees%u_mLevel%u)", cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
     }
 
-    std::string graph_directory() const {
-        return graph_dir.string();
-    }
+    std::string graph_directory() const { return graph_dir.string(); }
 
-    std::string graph_file(const CreateGraphParams& cg) const {
-        return (graph_dir / (base_name(cg) + ".efa")).string();
-    }
+    std::string graph_file(const CreateGraphParams& cg) const { return (graph_dir / (base_name(cg) + ".efa")).string(); }
 
-    std::string graph_log_file(const CreateGraphParams& cg) const {
-        return (graph_dir / (base_name(cg) + ".log")).string();
-    }
+    std::string graph_log_file(const CreateGraphParams& cg) const { return (graph_dir / (base_name(cg) + ".log")).string(); }
 };
 
 static void run_graph_stats(efanna2e::IndexGraph* index, const Dataset& ds, bool use_half_gt) {
-    const std::string gt_file = use_half_gt
-        ? (ds.files_dir() / ds.info().base_groundtruth_half_file).string()
-        : (ds.files_dir() / ds.info().base_groundtruth_file).string();
+    const std::string gt_file = use_half_gt ? (ds.files_dir() / ds.info().base_groundtruth_half_file).string()
+                                            : (ds.files_dir() / ds.info().base_groundtruth_file).string();
 
     if (std::filesystem::exists(gt_file)) {
         statistics::compute_stats(index, gt_file.c_str());
@@ -201,8 +192,7 @@ static void run_anns_test(efanna2e::IndexGraph* index,
     auto ground_truth = ds.load_groundtruth(cg.anns_k, use_half_gt);
     wait_before_test();
 
-    test_graph_anns(index, base_data, query_data, query_count, dim, 
-                    ground_truth, cg.anns_repeat, cg.anns_k, cg.L_search);
+    test_graph_anns(index, base_data, query_data, query_count, dim, ground_truth, cg.anns_repeat, cg.anns_k, cg.L_search);
 }
 
 static void run_explore_test(efanna2e::IndexGraph* index,
@@ -213,9 +203,8 @@ static void run_explore_test(efanna2e::IndexGraph* index,
                              const CreateGraphParams& cg,
                              bool use_half_gt) {
     std::string entry_file = (ds.files_dir() / ds.info().explore_entry_vertex_file).string();
-    const std::string explore_gt_file = use_half_gt
-        ? (ds.files_dir() / ds.info().explore_groundtruth_half_file).string()
-        : (ds.files_dir() / ds.info().explore_groundtruth_file).string();
+    const std::string explore_gt_file = use_half_gt ? (ds.files_dir() / ds.info().explore_groundtruth_half_file).string()
+                                                    : (ds.files_dir() / ds.info().explore_groundtruth_file).string();
     std::string explore_query_file = ds.explore_query_file();
 
     // Check if all required files exist
@@ -258,26 +247,26 @@ static void run_explore_test(efanna2e::IndexGraph* index,
     // Verify dimensions match
     if (explore_queries.num != entry_indices.size() || explore_queries.num != explore_gt_vec.size()) {
         log("Warning: dimension mismatch - queries=%u, entries=%zu, gt=%zu\n",
-            explore_queries.num, entry_indices.size(), explore_gt_vec.size());
+            explore_queries.num,
+            entry_indices.size(),
+            explore_gt_vec.size());
     }
 
     wait_before_test();
-    test_graph_explore(index, explore_queries.data, explore_queries.num, explore_queries.dim,
-                       explore_gt_vec, entry_indices, cg.explore_k);
+    test_graph_explore(index, explore_queries.data, explore_queries.num, explore_queries.dim, explore_gt_vec, entry_indices, cg.explore_k);
 }
 
 static void run_create_graph_test(const Dataset& ds,
-                                   const CreateGraphParams& cg,
-                                   const GraphPaths& paths,
-                                   const LoadedData& base_data,
-                                   const LoadedData& query_data,
-                                   const std::string& test_name) {
+                                  const CreateGraphParams& cg,
+                                  const GraphPaths& paths,
+                                  const LoadedData& base_data,
+                                  const LoadedData& query_data,
+                                  const std::string& test_name) {
     std::string graph_path = paths.graph_file(cg);
     std::string log_path = paths.graph_log_file(cg);
 
     log("\n=== %s Test ===\n", test_name.c_str());
-    log("Settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u\n", 
-        cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
+    log("Settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u\n", cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
     log("Graph: %s\n", graph_path.c_str());
     log("Log: %s\n", log_path.c_str());
 
@@ -292,20 +281,17 @@ static void run_create_graph_test(const Dataset& ds,
     log("Base data: size=%u, dim=%u\n", base_data.num, base_data.dim);
     log("Query data: size=%u, dim=%u\n", query_data.num, query_data.dim);
 
-    auto index = load_or_build_graph(ds, base_data.data, base_data.num, base_data.dim,
-                                      cg, paths.graph_dir, graph_path);
+    auto index = load_or_build_graph(ds, base_data.data, base_data.num, base_data.dim, cg, paths.graph_dir, graph_path);
 
     if (index) {
         run_graph_stats(index.get(), ds, false);
 
         log("\n--- ANNS Test (k=%u) ---\n", cg.anns_k);
-        run_anns_test(index.get(), base_data.data, query_data.data, query_data.num, 
-                      query_data.dim, ds, cg, false);
+        run_anns_test(index.get(), base_data.data, query_data.data, query_data.num, query_data.dim, ds, cg, false);
         log("ANNS Test complete\n");
 
         log("\n--- Exploration Test (k=%u) ---\n", cg.explore_k);
-        run_explore_test(index.get(), ds, query_data.data, query_data.num, 
-                         query_data.dim, cg, false);
+        run_explore_test(index.get(), ds, query_data.data, query_data.num, query_data.dim, cg, false);
         log("Exploration Test complete\n");
     }
 
@@ -316,21 +302,21 @@ static void run_create_graph_test(const Dataset& ds,
 int main(int argc, char** argv) {
     log("Testing Efanna Graph...\n");
 
-    #if defined(__AVX__)
-        std::cout << "use AVX2  ..." << std::endl;
-    #elif defined(__SSE2__)
-        std::cout << "use SSE  ..." << std::endl;
-    #else
-        std::cout << "use arch  ..." << std::endl;
-    #endif
+#if defined(__AVX__)
+    std::cout << "use AVX2  ..." << std::endl;
+#elif defined(__SSE2__)
+    std::cout << "use SSE  ..." << std::endl;
+#else
+    std::cout << "use arch  ..." << std::endl;
+#endif
     std::cout << "DATA_ALIGN_FACTOR " << DATA_ALIGN_FACTOR << std::endl;
 
-    #ifdef _OPENMP
-        omp_set_dynamic(0);     // Explicitly disable dynamic teams
-        omp_set_num_threads(1); // Use 1 threads for all consecutive parallel regions
+#ifdef _OPENMP
+    omp_set_dynamic(0);      // Explicitly disable dynamic teams
+    omp_set_num_threads(1);  // Use 1 threads for all consecutive parallel regions
 
-        std::cout << "_OPENMP " << omp_get_num_threads() << " threads" << std::endl;
-    #endif
+    std::cout << "_OPENMP " << omp_get_num_threads() << " threads" << std::endl;
+#endif
 
     const auto data_path = std::filesystem::path(DATA_PATH);
     log("data_path %s\n", data_path.string().c_str());
@@ -341,20 +327,23 @@ int main(int argc, char** argv) {
     bool do_run = true;
 
     if (data_root.empty()) {
-        log("WARNING: DATA_PATH is empty! Please provide it as a command line argument or set it in CMake.\n");
+        log("WARNING: DATA_PATH is empty! Please provide it as a command line "
+            "argument or set it in CMake.\n");
     }
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "help" || arg == "--help") {
-            log("Usage: efanna_build_and_test <dataset> [test_type] [data_root] [--run|--dry-run]\n");
+            log("Usage: efanna_build_and_test <dataset> [test_type] [data_root] "
+                "[--run|--dry-run]\n");
             log("Datasets: sift1m, deep1m, audio, glove, enron, all\n");
             log("Test types:\n");
             log("  create_graph    - Build graph, run stats, ANNS, explore\n");
             log("  nsg_graph       - Build NSG-ready graph\n");
             log("  ssg_graph       - Build SSG-ready graph\n");
             log("  all             - Run all graph tests (create, nsg, ssg)\n");
-            log("Options: [data_root] path (default: DATA_PATH), --run or --dry-run\n");
+            log("Options: [data_root] path (default: DATA_PATH), --run or "
+                "--dry-run\n");
             return 0;
         }
 
@@ -394,7 +383,8 @@ int main(int argc, char** argv) {
             log("Graph directory: %s\n", graph_paths.graph_directory().c_str());
             log("Ground truth (full): %s\n", ds.groundtruth_file_full().c_str());
             log("Ground truth (half): %s\n", ds.groundtruth_file_half().c_str());
-            log("Build settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u\n",
+            log("Build settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, "
+                "mLevel=%u\n",
                 config.create_graph.K,
                 config.create_graph.L,
                 config.create_graph.iter,
@@ -426,8 +416,7 @@ int main(int argc, char** argv) {
                 auto base_data = ds.load_base();
                 auto query_data = ds.load_query();
 
-                log("Actual memory usage: %zu Mb, Max memory usage: %zu Mb\n", 
-                    getCurrentRSS() / 1000000, getPeakRSS() / 1000000);
+                log("Actual memory usage: %zu Mb, Max memory usage: %zu Mb\n", getCurrentRSS() / 1000000, getPeakRSS() / 1000000);
 
                 if (test_type_arg == "create_graph" || test_type_arg == "all") {
                     run_create_graph_test(ds, config.create_graph, graph_paths, base_data, query_data, "CREATE_GRAPH");

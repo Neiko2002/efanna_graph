@@ -1,12 +1,12 @@
 #pragma once
 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <streambuf>
 #include <string>
 #include <utility>
-#include <cstdio>
-#include <streambuf>
-#include <memory>
 
 namespace efanna::benchmark {
 
@@ -107,7 +107,11 @@ inline void set_console_logging(bool enabled) {
     log_to_console = enabled;
 }
 
-template<typename... Args>
+inline std::string string_format(const char* fmt) {
+    return std::string(fmt);
+}
+
+template <typename... Args>
 inline std::string string_format(const char* fmt, Args&&... args) {
     const int size = std::snprintf(nullptr, 0, fmt, std::forward<Args>(args)...);
     if (size <= 0) {
@@ -119,10 +123,26 @@ inline std::string string_format(const char* fmt, Args&&... args) {
     return buf;
 }
 
-template<typename... Args>
+inline void log(const char* msg) {
+    if (cout_buffer_backup != nullptr) {
+        std::cout << msg;
+        std::cout.flush();
+    } else {
+        if (log_to_console) {
+            std::cout << msg;
+            std::cout.flush();
+        }
+        if (log_file_stream.is_open()) {
+            log_file_stream << msg;
+            log_file_stream.flush();
+        }
+    }
+}
+
+template <typename... Args>
 inline void log(const char* fmt, Args&&... args) {
     const std::string msg = string_format(fmt, std::forward<Args>(args)...);
-    
+
     if (cout_buffer_backup != nullptr) {
         // If cout is redirected to TeeBuf, writing to cout already writes to log_file_stream
         std::cout << msg;
@@ -139,4 +159,4 @@ inline void log(const char* fmt, Args&&... args) {
     }
 }
 
-} // namespace efanna::benchmark
+}  // namespace efanna::benchmark

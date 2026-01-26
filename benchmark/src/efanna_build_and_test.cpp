@@ -25,6 +25,8 @@ struct DatasetConfig {
     Metric metric = Metric::L2;
 
     CreateGraphParams create_graph;
+    CreateGraphParams ssg_graph;
+    CreateGraphParams nsg_graph;
 };
 
 static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
@@ -38,6 +40,20 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.S = 10;
         conf.create_graph.R = 50;
         conf.create_graph.L_search = {100, 200, 300, 500, 800, 1200, 1600};
+
+        conf.nsg_graph = conf.create_graph;
+        conf.nsg_graph.K = 200;
+        conf.nsg_graph.L = 200;
+        conf.nsg_graph.iter = 10;
+        conf.nsg_graph.S = 10;
+        conf.nsg_graph.R = 100;
+
+        conf.ssg_graph = conf.create_graph;
+        conf.ssg_graph.K = 200;
+        conf.ssg_graph.L = 200;
+        conf.ssg_graph.iter = 12;
+        conf.ssg_graph.S = 10;
+        conf.ssg_graph.R = 100;
     } else if (dataset_name == DatasetName::DEEP1M) {
         conf.create_graph.K = 50;
         conf.create_graph.L = 70;
@@ -45,6 +61,20 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.S = 10;
         conf.create_graph.R = 50;
         conf.create_graph.L_search = {100, 200, 300, 500, 800, 1200, 1600};
+
+        conf.nsg_graph = conf.create_graph;
+        conf.nsg_graph.K = 200;
+        conf.nsg_graph.L = 200;
+        conf.nsg_graph.iter = 10;
+        conf.nsg_graph.S = 10;
+        conf.nsg_graph.R = 100;
+
+        conf.ssg_graph = conf.create_graph;
+        conf.ssg_graph.K = 200;
+        conf.ssg_graph.L = 200;
+        conf.ssg_graph.iter = 12;
+        conf.ssg_graph.S = 10;
+        conf.ssg_graph.R = 100;
     } else if (dataset_name == DatasetName::GLOVE) {
         conf.create_graph.K = 400;
         conf.create_graph.L = 420;
@@ -52,6 +82,20 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.S = 15;
         conf.create_graph.R = 200;
         conf.create_graph.L_search = {300, 800, 1000, 2000, 4000, 8000, 16000, 32000};
+
+        conf.nsg_graph = conf.create_graph;
+        conf.nsg_graph.K = 400;
+        conf.nsg_graph.L = 420;
+        conf.nsg_graph.iter = 12;
+        conf.nsg_graph.S = 20;
+        conf.nsg_graph.R = 300;
+
+        conf.ssg_graph = conf.create_graph;
+        conf.ssg_graph.K = 400;
+        conf.ssg_graph.L = 420;
+        conf.ssg_graph.iter = 12;
+        conf.ssg_graph.S = 15;
+        conf.ssg_graph.R = 200;
     } else if (dataset_name == DatasetName::ENRON) {
         conf.create_graph.K = 40;
         conf.create_graph.L = 140;
@@ -61,6 +105,24 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.nTrees = 4;
         conf.create_graph.mLevel = 8;
         conf.create_graph.L_search = {500, 800, 1200, 3000, 6000};
+
+        conf.nsg_graph = conf.create_graph;
+        conf.nsg_graph.K = 200;
+        conf.nsg_graph.L = 200;
+        conf.nsg_graph.iter = 7;
+        conf.nsg_graph.S = 25;
+        conf.nsg_graph.R = 200;
+        conf.nsg_graph.nTrees = 0;
+        conf.nsg_graph.mLevel = 0;
+
+        conf.ssg_graph = conf.create_graph;
+        conf.ssg_graph.K = 100;
+        conf.ssg_graph.L = 110;
+        conf.ssg_graph.iter = 7;
+        conf.ssg_graph.S = 20;
+        conf.ssg_graph.R = 300;
+        conf.ssg_graph.nTrees = 0;
+        conf.ssg_graph.mLevel = 0;
     } else if (dataset_name == DatasetName::AUDIO) {
         conf.create_graph.K = 40;
         conf.create_graph.L = 40;
@@ -70,6 +132,24 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.nTrees = 16;
         conf.create_graph.mLevel = 8;
         conf.create_graph.L_search = {100, 125, 180, 250, 350, 600, 1200, 2000};
+
+        conf.nsg_graph = conf.create_graph;
+        conf.nsg_graph.K = 200;
+        conf.nsg_graph.L = 230;
+        conf.nsg_graph.iter = 5;
+        conf.nsg_graph.S = 10;
+        conf.nsg_graph.R = 100;
+        conf.nsg_graph.nTrees = 0;
+        conf.nsg_graph.mLevel = 0;
+
+        conf.ssg_graph = conf.create_graph;
+        conf.ssg_graph.K = 400;
+        conf.ssg_graph.L = 400;
+        conf.ssg_graph.iter = 5;
+        conf.ssg_graph.S = 25;
+        conf.ssg_graph.R = 200;
+        conf.ssg_graph.nTrees = 0;
+        conf.ssg_graph.mLevel = 0;
     }
 
     return conf;
@@ -187,16 +267,15 @@ static void run_explore_test(efanna2e::IndexGraph* index,
 }
 
 static void run_create_graph_test(const Dataset& ds,
-                                  const DatasetConfig& config,
-                                  const GraphPaths& paths,
-                                  const LoadedData& base_data,
-                                  const LoadedData& query_data) {
-    const auto& cg = config.create_graph;
-
+                                   const CreateGraphParams& cg,
+                                   const GraphPaths& paths,
+                                   const LoadedData& base_data,
+                                   const LoadedData& query_data,
+                                   const std::string& test_name) {
     std::string graph_path = paths.graph_file(cg);
     std::string log_path = paths.graph_log_file(cg);
 
-    log("\n=== CREATE_GRAPH Test ===\n");
+    log("\n=== %s Test ===\n", test_name.c_str());
     log("Settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u\n", 
         cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
     log("Graph: %s\n", graph_path.c_str());
@@ -231,7 +310,7 @@ static void run_create_graph_test(const Dataset& ds,
     }
 
     reset_log_to_console();
-    log("CREATE_GRAPH: Log written to: %s\n", log_path.c_str());
+    log("%s: Log written to: %s\n", test_name.c_str(), log_path.c_str());
 }
 
 int main(int argc, char** argv) {
@@ -257,7 +336,7 @@ int main(int argc, char** argv) {
     log("data_path %s\n", data_path.string().c_str());
 
     DatasetName ds_name = DatasetName::AUDIO;
-    std::string test_type_arg = "create_graph";
+    std::string test_type_arg = "all";
     std::string data_root = data_path.string();
     bool do_run = true;
 
@@ -272,7 +351,9 @@ int main(int argc, char** argv) {
             log("Datasets: sift1m, deep1m, audio, glove, enron, all\n");
             log("Test types:\n");
             log("  create_graph    - Build graph, run stats, ANNS, explore\n");
-            log("  all             - Same as create_graph\n");
+            log("  nsg_graph       - Build NSG-ready graph\n");
+            log("  ssg_graph       - Build SSG-ready graph\n");
+            log("  all             - Run all graph tests (create, nsg, ssg)\n");
             log("Options: [data_root] path (default: DATA_PATH), --run or --dry-run\n");
             return 0;
         }
@@ -292,7 +373,7 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        if (arg == "create_graph" || arg == "all") {
+        if (arg == "create_graph" || arg == "nsg_graph" || arg == "ssg_graph" || arg == "all") {
             test_type_arg = arg;
             continue;
         }
@@ -349,7 +430,13 @@ int main(int argc, char** argv) {
                     getCurrentRSS() / 1000000, getPeakRSS() / 1000000);
 
                 if (test_type_arg == "create_graph" || test_type_arg == "all") {
-                    run_create_graph_test(ds, config, graph_paths, base_data, query_data);
+                    run_create_graph_test(ds, config.create_graph, graph_paths, base_data, query_data, "CREATE_GRAPH");
+                }
+                if (test_type_arg == "nsg_graph" || test_type_arg == "all") {
+                    run_create_graph_test(ds, config.nsg_graph, graph_paths, base_data, query_data, "NSG_GRAPH");
+                }
+                if (test_type_arg == "ssg_graph" || test_type_arg == "all") {
+                    run_create_graph_test(ds, config.ssg_graph, graph_paths, base_data, query_data, "SSG_GRAPH");
                 }
             }
 

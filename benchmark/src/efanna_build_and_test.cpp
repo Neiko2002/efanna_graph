@@ -209,7 +209,6 @@ static void run_create_graph_test(const Dataset& ds,
     }
     set_log_file(log_path, true);
     attach_cerr_to_log();
-    attach_cout_to_log();
 
     log("Base data: size=%u, dim=%u\n", base_data.num, base_data.dim);
     log("Query data: size=%u, dim=%u\n", query_data.num, query_data.dim);

@@ -318,15 +318,13 @@ void IndexGraph::Build(size_t n, const float *data, const Parameters &parameters
 
 
 void IndexGraph::Explore(const unsigned initial_node_id, const float *x, const size_t K_target, unsigned *indices, const uint32_t max_distance_computation_count) {
-  data_ = x;
-
   uint32_t distance_computation_count = 0;
   std::vector<Neighbor> retset(K_target + 1);
   std::vector<char> flags(nd_);
   memset(flags.data(), 0, nd_ * sizeof(char));
 
   // initial element
-  auto query = data_ + dimension_ * initial_node_id;
+  auto query = x;
   auto L = 0;
   {
     flags[initial_node_id] = true;
@@ -339,6 +337,7 @@ void IndexGraph::Explore(const unsigned initial_node_id, const float *x, const s
       _mm_prefetch(reinterpret_cast<const char*>(data_ + dimension_ * neighbors[m]), _MM_HINT_T0); // prefetch neighbor features
 
     for (unsigned m = 0; m < MaxM; ++m) {
+      if (m >= K_target + 1) break; // Safety check
       unsigned neighbor_id = neighbors[m];
 
       float dist = distance_->compare(data_ + dimension_ * neighbor_id, query, (unsigned)dimension_);
@@ -495,6 +494,7 @@ void IndexGraph::Load(const char *filename) {
   size_t num = fsize / record_bytes;
   in.seekg(0,std::ios::beg);
 
+  nd_ = num;
   final_graph_.resize(num);
   for(size_t i = 0; i < num; i++){
     in.seekg(4,std::ios::cur);

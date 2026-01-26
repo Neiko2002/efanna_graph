@@ -7,6 +7,7 @@
 #include <efanna2e/index_kdtree.h>
 #include <efanna2e/exceptions.h>
 #include <efanna2e/parameters.h>
+#include <chrono>
 
 
 namespace efanna2e {
@@ -277,6 +278,7 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 
 
   void IndexKDtree::Build(size_t n, const float *data, const Parameters &parameters) {
+  	  auto s = std::chrono::high_resolution_clock::now();
 
 	  data_ = data;
 	  //assert(initializer_->HasBuilt());
@@ -371,6 +373,8 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 		  std::copy(NewSet.begin(), NewSet.end(),ActiveSet.begin());
 		  NewSet.clear();
 	  }
+	  std::chrono::duration<double> elapsed_time = std::chrono::high_resolution_clock::now() - s;
+  	  std::cout <<"tree leaf setup completed after " << elapsed_time.count() << " secs\n";
 
 #pragma omp parallel for
 	  for(int64_t i = 0; i < ActiveSet.size(); i++){
@@ -383,13 +387,15 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 		  DFSbuild(node, rng, &myids[0]+node->StartIdx, node->EndIdx-node->StartIdx, node->StartIdx);
 	  }
 	  //DFStest(0,0,tree_roots_[0]);
-	  std::cout<<"build tree completed"<<std::endl;
+	  elapsed_time = std::chrono::high_resolution_clock::now() - s;
+	  std::cout<<"build tree completed after "<< elapsed_time.count() << " secs\n";
 
 	  for(size_t i = 0; i < (unsigned)TreeNumBuild; i++){
 		  getMergeLevelNodeList(tree_roots_[i], i ,0);
 	  }
 
-	  std::cout << "merge node list size: " << mlNodeList.size() << std::endl;
+		elapsed_time = std::chrono::high_resolution_clock::now() - s;
+	  std::cout << "merge node list size: " << mlNodeList.size() << " after " << elapsed_time.count() << " secs\n";
 	  if(error_flag){
 		  std::cout << "merge level deeper than tree, max merge deepth is " << max_deepth-1<<std::endl;
 	  }
@@ -397,10 +403,14 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 #pragma omp parallel for
 	  for(int64_t i = 0; i < mlNodeList.size(); i++){
 		  mergeSubGraphs(mlNodeList[i].second, mlNodeList[i].first);
+
+		  if(i % 100 == 0) {
+		  	elapsed_time = std::chrono::high_resolution_clock::now() - s;
+		  	std::cout << "merge sub graph " << i << " after "  << elapsed_time.count() << " secs\n";
+		  }
 	  }
-
-
-	  std::cout << "merge tree completed" << std::endl;
+	  elapsed_time = std::chrono::high_resolution_clock::now() - s;
+	  std::cout << "merge tree completed after "  << elapsed_time.count() << " secs\n";
 
 	  final_graph_.reserve(nd_);
 	  std::mt19937 rng(seed ^ omp_get_thread_num());
@@ -432,6 +442,9 @@ IndexKDtree::IndexKDtree(const size_t dimension, const size_t n, Metric m, Index
 		  tmp.reserve(K);
 		  final_graph_.push_back(tmp);
 	  }
+	  elapsed_time = std::chrono::high_resolution_clock::now() - s;
+	  std::cout << "kdtree creation after "  << elapsed_time.count() << " secs\n";
+
 	  std::vector<nhood>().swap(graph_);
 	  has_built = true;
   }

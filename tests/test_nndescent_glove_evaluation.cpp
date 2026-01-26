@@ -19,7 +19,7 @@ void load_data(const char* filename, float*& data, unsigned& num,unsigned& dim){
   std::ios::pos_type ss = in.tellg();
   size_t fsize = (size_t)ss;
   num = (unsigned)(fsize / (dim+1) / 4);
-  data = new float[num * dim];
+  data = new float[num * dim * sizeof(float)];
 
   in.seekg(0,std::ios::beg);
   for(size_t i = 0; i < num; i++){
@@ -56,10 +56,10 @@ int main(int argc, char** argv) {
   std::cout << "DATA_ALIGN_FACTOR " << DATA_ALIGN_FACTOR << std::endl;
 
 
-  auto object_file      = R"(e:/Data/Feature/SIFT1M/SIFT1M/sift_base.fvecs)";
-  auto query_file       = R"(e:/Data/Feature/SIFT1M/SIFT1M/sift_query.fvecs)";
-  auto groundtruth_file = R"(e:/Data/Feature/SIFT1M/SIFT1M/sift_groundtruth.ivecs)";
-  auto efanna_file      = R"(e:/Data/Feature/SIFT1M/efanna/efanna K50 L70 It10 S10 R50.efa)";
+  auto object_file      = R"(e:/Data/Feature/GloVe/glove-100/glove-100_base.fvecs)";
+  auto query_file       = R"(e:/Data/Feature/GloVe/glove-100/glove-100_query.fvecs)";
+  auto groundtruth_file = R"(e:/Data/Feature/GloVe/glove-100/glove-100_groundtruth.ivecs)";
+  auto efanna_file      = R"(e:/Data/Feature/GloVe/efanna/glove-100_K300_L320_It12_S10_R200.efa)";
 
   size_t k = 100;
 
@@ -75,7 +75,6 @@ int main(int argc, char** argv) {
   index.Load(efanna_file);
   std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after loading base data and graph" << std::endl;
 
-  
   // query data
   float* query_data = NULL;
   unsigned query_num, query_dim;
@@ -93,7 +92,7 @@ int main(int argc, char** argv) {
   auto ann = std::vector<unsigned>(k);
 
   // try differen L_search parameters
-  std::vector<unsigned> L_search_parameter = { 100, 200, 300, 500, 800, 1200, 1600 };
+  std::vector<unsigned> L_search_parameter = { 300, 800, 1000, 2000, 4000, 8000, 16000, 32000 };
   for (float L_search : L_search_parameter)
   {
     // L search must be bigger or equal to k

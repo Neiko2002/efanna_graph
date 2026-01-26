@@ -13,8 +13,20 @@ target_link_libraries(test_nndescent_sift1m ${PROJECT_NAME})
 add_executable(test_nndescent_sift1m_evaluation test_nndescent_sift1m_evaluation.cpp)
 target_link_libraries(test_nndescent_sift1m_evaluation ${PROJECT_NAME})
 
-add_executable(test_nndescent_sift1m_stats test_nndescent_sift1m_stats.cpp)
-target_link_libraries(test_nndescent_sift1m_stats ${PROJECT_NAME})
+add_executable(test_efanna_exploration test_efanna_exploration.cpp)
+target_link_libraries(test_efanna_exploration ${PROJECT_NAME})
+
+add_executable(test_efanna_stats test_efanna_stats.cpp)
+target_link_libraries(test_efanna_stats ${PROJECT_NAME})
+
+add_executable(test_nndescent_glove test_nndescent_glove.cpp)
+target_link_libraries(test_nndescent_glove ${PROJECT_NAME})
+
+add_executable(test_nndescent_glove_evaluation test_nndescent_glove_evaluation.cpp)
+target_link_libraries(test_nndescent_glove_evaluation ${PROJECT_NAME})
+
+add_executable(test_efanna_graph test_efanna_graph.cpp)
+target_link_libraries(test_efanna_graph ${PROJECT_NAME})
 
 if(NOT WIN32)
     # OpenBLAS

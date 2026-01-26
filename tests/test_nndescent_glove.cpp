@@ -1,11 +1,11 @@
 //
-// Created by 付聪 on 2017/6/26.
+// Created by 付聪 on 2017/6/21.
 //
 
+#include <efanna2e/index_kdtree.h>
 #include <efanna2e/index_graph.h>
 #include <efanna2e/index_random.h>
 #include <efanna2e/util.h>
-
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -15,7 +15,7 @@
 #include <unordered_set>
 #include <cmath>
 
-void load_data(const char* filename, float*& data, unsigned& num, unsigned& dim) { // load data with sift10K pattern
+void load_data(const char* filename, float*& data, unsigned& num,unsigned& dim){// load data with sift10K pattern
   std::ifstream in(filename, std::ios::binary);
   if(!in.is_open()){std::cout<<"open file error"<<std::endl;exit(-1);}
   in.read((char*)&dim,4);
@@ -46,24 +46,17 @@ int main(int argc, char** argv){
   std::cout << "DATA_ALIGN_FACTOR " << DATA_ALIGN_FACTOR << std::endl;
 
   #ifdef _OPENMP
-    omp_set_dynamic(0);     // Explicitly disable dynamic teams
-    omp_set_num_threads(1); // Use 1 threads for all consecutive parallel regions
+        omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        omp_set_num_threads(1); // Use 1 threads for all consecutive parallel regions
 
-      std::cout << "_OPENMP " << omp_get_num_threads() << " threads" << std::endl;
+        std::cout << "_OPENMP " << omp_get_num_threads() << " threads" << std::endl;
   #endif
 
 
-  // SIFT1M
-  // auto object_file          = R"(e:/Data/Feature/SIFT1M/SIFT1M/sift_base.fvecs)";  
-  // auto init_graph_filename  = R"(e:/Data/Feature/SIFT1M/efanna/efanna_kdtree_nTree8_mLevel8_K60.kdt)";
-  // auto graph_filename       = R"(e:/Data/Feature/SIFT1M/efanna/efanna K60 L70 It10 S15 R150 on kdtree_nTree8_mLevel8_K60.efa)";
-  
-  // GloVe
+
   auto object_file          = R"(e:/Data/Feature/GloVe/glove-100/glove-100_base.fvecs)";
-  auto init_graph_filename  = R"(e:/Data/Feature/GloVe/efanna/efanna_kdtree_nTree8_mLevel8_K100.kdt)";
-  auto graph_filename       = R"(e:/Data/Feature/GloVe/efanna/efanna K100 L170 It12 S15 R100 (nTree8 mLevel8 K100).efa)";
+  auto efanna_file          = R"(e:/Data/Feature/GloVe/efanna/glove-100_K400_L420_It12_S20_R200.efa)";
   std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb" << std::endl;
-  
 
   std::cout << "Load Data" << std::endl;
   float* data_load = NULL;
@@ -71,22 +64,40 @@ int main(int argc, char** argv){
   load_data(object_file, data_load, points_num, dim);
   std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after loading data" << std::endl;
 
-  // WEAVES for efanna SIFT1M
-  // https://github.com/Lsyhprum/WEAVESS/tree/dev/parameters
-  // unsigned K = (unsigned)60;
-  // unsigned L = (unsigned)70;
-  // unsigned iter = (unsigned)10;
-  // unsigned S = (unsigned)15;
-  // unsigned R = (unsigned)150;
+  // SSG: test_nndescent glove-100.fvecs glove-100_400nn.knng 400 420 12 15 200
+  // https://github.com/Neiko2002/SSG
+  unsigned K = (unsigned)400;
+  unsigned L = (unsigned)420;
+  unsigned iter = (unsigned)12;
+  unsigned S = (unsigned)20;     // 20 (command) or 15 (table)
+  unsigned R = (unsigned)200;
 
-  // WEAVES for efanna GloVe
+  // WEAVES for efanna must be refined
   // https://github.com/Lsyhprum/WEAVESS/tree/dev/parameters
-  unsigned K = (unsigned)100;
-  unsigned L = (unsigned)170;
-  unsigned iter = (unsigned)7;  
-  unsigned S = (unsigned)10;    
-  unsigned R = (unsigned)100;
 
+  // WEAVES for NSG
+  // https://github.com/Lsyhprum/WEAVESS/tree/dev/parameters
+  // unsigned K = (unsigned)400;
+  // unsigned L = (unsigned)420;
+  // unsigned iter = (unsigned)12;
+  // unsigned S = (unsigned)20;
+  // unsigned R = (unsigned)300;
+
+  // WEAVES for SSG
+  // https://github.com/Lsyhprum/WEAVESS/tree/dev/parameters
+  // unsigned K = (unsigned)300;
+  // unsigned L = (unsigned)320;
+  // unsigned iter = (unsigned)12;
+  // unsigned S = (unsigned)10;
+  // unsigned R = (unsigned)200;
+
+  // our best parameters
+  // unsigned K = (unsigned)400;
+  // unsigned L = (unsigned)420;
+  // unsigned iter = (unsigned)20;
+  // unsigned S = (unsigned)20;
+  // unsigned R = (unsigned)200;
+  
 
   std::cout << "Align Data" << std::endl;
   data_load = efanna2e::data_align(data_load, points_num, dim); // one must align the data before build
@@ -97,9 +108,16 @@ int main(int argc, char** argv){
   efanna2e::IndexGraph index(dim, points_num, efanna2e::L2, (efanna2e::Index*)(&init_index));
   std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after creating graph" << std::endl;
 
-  std::cout << "Load initial graph" << std::endl;
-  index.Load(init_graph_filename);
-  std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after loading initial graph" << std::endl;
+  // does not work better than refine
+  // std::cout << "Create graph" << std::endl;
+  // auto init_graph_filename  = R"(e:/Data/Feature/GloVe/efanna/efanna_kdtree_nTree8_mLevel8_K100.kdt)";
+  // efanna2e::IndexRandom init_index(dim, points_num);  
+  // efanna2e::IndexGraph kdtree(dim, points_num, efanna2e::L2, (efanna2e::Index*)(&init_index));
+  // kdtree.Load(init_graph_filename);
+  // efanna2e::Parameters kdtreeParas;
+  // kdtree.GraphAdd(data_load, 0, dim, kdtreeParas);
+  // efanna2e::IndexGraph index(dim, points_num, efanna2e::L2, (efanna2e::Index*)(&kdtree));
+  // std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after creating graph" << std::endl;
 
 
   efanna2e::Parameters paras;
@@ -109,15 +127,17 @@ int main(int argc, char** argv){
   paras.Set<unsigned>("S", S);
   paras.Set<unsigned>("R", R);
 
+  // paras.Set<unsigned>("L_search", K);
+
   std::cout << "Build graph" << std::endl;
   auto s = std::chrono::high_resolution_clock::now();
-  index.RefineGraph(data_load, paras);
+  index.Build(points_num, data_load, paras);
   auto e = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> diff = e-s;
-  std::cout <<"Time cost: "<< diff.count() << "\n";
+  std::chrono::duration<double> elapsed_time = e-s;
+  std::cout <<"Time cost: "<< elapsed_time.count() << "\n";
   std::cout << "Actual memory usage: " << getCurrentRSS() / 1000000 << " Mb, Max memory usage: " << getPeakRSS() / 1000000 << " Mb after building graph" << std::endl;
 
-  index.Save(graph_filename);
+  index.Save(efanna_file);
 
   return 0;
 }

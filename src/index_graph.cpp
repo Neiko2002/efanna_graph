@@ -8,6 +8,8 @@
 #include <efanna2e/exceptions.h>
 #include <efanna2e/parameters.h>
 #include <omp.h>
+#include <chrono>
+#include <iostream>
 #include <set>
 
 namespace efanna2e {
@@ -130,6 +132,7 @@ void IndexGraph::update(const Parameters &parameters) {
 }
 
 void IndexGraph::NNDescent(const Parameters &parameters) {
+  auto s = std::chrono::high_resolution_clock::now();
   unsigned iter = parameters.Get<unsigned>("iter");
   std::mt19937 rng(rand());
   std::vector<unsigned> control_points(_CONTROL_NUM);
@@ -141,7 +144,10 @@ void IndexGraph::NNDescent(const Parameters &parameters) {
     update(parameters);
     //checkDup();
     eval_recall(control_points, acc_eval_set);
-    std::cout << "iter: " << it << std::endl;
+
+    auto e = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_time = e-s;
+    std::cout << "iter: " << it << ", mem: " << getCurrentRSS() / 1000000 << " Mb, peak mem: " << getPeakRSS() / 1000000 << " Mb, time: " << elapsed_time.count() << " secs" <<std::endl;
   }
 }
 
@@ -178,11 +184,12 @@ void IndexGraph::eval_recall(std::vector<unsigned>& ctrl_points, std::vector<std
     }
     mean_acc += acc / v.size();
   }
-  std::cout<<"recall : "<<mean_acc / ctrl_points.size() <<std::endl;
+  std::cout<<"recall : " << mean_acc / ctrl_points.size() <<std::endl;
 }
 
 
 void IndexGraph::InitializeGraph(const Parameters &parameters) {
+  auto s = std::chrono::high_resolution_clock::now();
 
   const unsigned L = parameters.Get<unsigned>("L");
   const unsigned S = parameters.Get<unsigned>("S");
@@ -207,6 +214,12 @@ void IndexGraph::InitializeGraph(const Parameters &parameters) {
     }
     std::make_heap(graph_[i].pool.begin(), graph_[i].pool.end());
     graph_[i].pool.reserve(L);
+
+    if(i % 10000 == 0) {
+      auto e = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed_time = e-s;
+      std::cout << "iter: " << i << ", mem: " << getCurrentRSS() / 1000000 << " Mb, peak mem: " << getPeakRSS() / 1000000 << " Mb, time: " << elapsed_time.count() << " secs" <<std::endl;
+    }
   }
 }
 
@@ -303,6 +316,103 @@ void IndexGraph::Build(size_t n, const float *data, const Parameters &parameters
   has_built = true;
 }
 
+
+void IndexGraph::Explore(const unsigned initial_node_id, const float *x, const size_t K_target, unsigned *indices, const uint32_t max_distance_computation_count) {
+  data_ = x;
+
+  uint32_t distance_computation_count = 0;
+  std::vector<Neighbor> retset(K_target + 1);
+  std::vector<char> flags(nd_);
+  memset(flags.data(), 0, nd_ * sizeof(char));
+
+  // initial element
+  auto query = data_ + dimension_ * initial_node_id;
+  auto L = 0;
+  {
+    flags[initial_node_id] = true;
+    auto& neighbors = final_graph_[initial_node_id];
+    unsigned MaxM = neighbors.size();
+
+    // prefetch neighbor ids
+    _mm_prefetch(reinterpret_cast<const char*>(neighbors.data()), _MM_HINT_T0);      
+    for (unsigned m = 0; m < MaxM; ++m)
+      _mm_prefetch(reinterpret_cast<const char*>(data_ + dimension_ * neighbors[m]), _MM_HINT_T0); // prefetch neighbor features
+
+    for (unsigned m = 0; m < MaxM; ++m) {
+      unsigned neighbor_id = neighbors[m];
+
+      float dist = distance_->compare(data_ + dimension_ * neighbor_id, query, (unsigned)dimension_);
+      retset[m] = Neighbor(neighbor_id, dist, true);
+      flags[neighbor_id] = true;
+      L++;
+
+      // early stop after to many computations
+      distance_computation_count++;
+      if(distance_computation_count >= max_distance_computation_count)
+        break;
+    }
+  }
+  std::sort(retset.begin(), retset.begin() + L);
+
+  // fill the retset array with the worst possible element
+  auto max_id = std::numeric_limits<unsigned int>::max();
+  auto max_dist = std::numeric_limits<float>::max();
+  for (; L < K_target; L++)
+    retset[L] = Neighbor(max_id, max_dist, false);
+
+  // try other elements
+  int k = 0;
+  while (k < L && distance_computation_count < max_distance_computation_count) {
+    int nk = L;
+
+    if (retset[k].flag) {
+      retset[k].flag = false;
+
+      auto id = retset[k].id;
+      auto& neighbors = final_graph_[id];
+      unsigned MaxM = neighbors.size();
+
+      // prefetch neighbor idds
+      _mm_prefetch(reinterpret_cast<const char*>(neighbors.data()), _MM_HINT_T0);      
+      for (unsigned m = 0; m < MaxM; ++m)
+        _mm_prefetch(reinterpret_cast<const char*>(data_ + dimension_ * neighbors[m]), _MM_HINT_T0); // prefetch neighbor features
+
+      // iterate all neighbors
+      for (unsigned m = 0; m < MaxM; ++m) {
+        unsigned neighbor_id = neighbors[m];
+        if (flags[neighbor_id]) 
+          continue;
+        flags[neighbor_id] = true;
+
+        // compute distance from query to neighbor
+        float dist = distance_->compare(query, data_ + dimension_ * neighbor_id, (unsigned)dimension_);
+        if (dist >= retset[L - 1].distance) 
+          continue;
+
+        auto nn = Neighbor(neighbor_id, dist, true);
+        int r = InsertIntoPool(retset.data(), L, nn);
+
+        if (r < nk) 
+          nk = r;
+
+        // early stop after to many computations
+        distance_computation_count++;
+        if(distance_computation_count >= max_distance_computation_count)
+          break;
+      }
+    }
+
+    // was an element placed better than the current position?
+    if (nk <= k)
+      k = nk;
+    else
+      ++k;
+  }
+
+  for (size_t i = 0; i < L; i++) 
+    indices[i] = retset[i].id;
+}
+
 void IndexGraph::Search(const float *query, const float *x, size_t K, const Parameters &parameter, unsigned *indices) {
   const unsigned L = parameter.Get<unsigned>("L_search");
 
@@ -363,12 +473,26 @@ void IndexGraph::Save(const char *filename) {
 
 void IndexGraph::Load(const char *filename) {
   std::ifstream in(filename, std::ios::binary);
-  unsigned k;
-  in.read((char*)&k,4);
+  if (!in.is_open()) {
+    std::cerr << "open file error: " << filename << std::endl;
+    throw std::runtime_error("IndexGraph::Load failed to open file");
+  }
+
+  unsigned k = 0;
+  in.read((char*)&k, 4);
+  if (!in || k == 0) {
+    std::cerr << "IndexGraph::Load invalid header in file: " << filename << std::endl;
+    throw std::runtime_error("IndexGraph::Load invalid header");
+  }
   in.seekg(0,std::ios::end);
   std::ios::pos_type ss = in.tellg();
   size_t fsize = (size_t)ss;
-  size_t num = fsize / ((size_t)k + 1) / 4;
+  const size_t record_bytes = (((size_t)k) + 1) * sizeof(unsigned);
+  if (record_bytes == 0 || fsize < sizeof(unsigned) || (fsize % record_bytes) != 0) {
+    std::cerr << "IndexGraph::Load corrupted file (unexpected size): " << filename << std::endl;
+    throw std::runtime_error("IndexGraph::Load corrupted file");
+  }
+  size_t num = fsize / record_bytes;
   in.seekg(0,std::ios::beg);
 
   final_graph_.resize(num);
@@ -377,6 +501,10 @@ void IndexGraph::Load(const char *filename) {
     final_graph_[i].resize(k);
     final_graph_[i].reserve(k);
     in.read((char*)final_graph_[i].data(), k * sizeof(unsigned));
+    if (!in) {
+      std::cerr << "IndexGraph::Load read error in file: " << filename << std::endl;
+      throw std::runtime_error("IndexGraph::Load read error");
+    }
   }
   in.close();
 

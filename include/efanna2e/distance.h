@@ -10,6 +10,7 @@
 #else
 #include <x86intrin.h>
 #endif
+
 #include <iostream>
 namespace efanna2e{
   enum Metric{

@@ -104,6 +104,7 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.nTrees = 4;
         conf.create_graph.mLevel = 8;
         conf.create_graph.L_search = {500, 800, 1200, 3000, 6000};
+        conf.create_graph.anns_repeat = 5;
 
         conf.nsg_graph = conf.create_graph;
         conf.nsg_graph.K = 200;
@@ -131,6 +132,7 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.nTrees = 16;
         conf.create_graph.mLevel = 8;
         conf.create_graph.L_search = {100, 125, 180, 250, 350, 600, 1200, 2000};
+        conf.create_graph.anns_repeat = 10;
 
         conf.nsg_graph = conf.create_graph;
         conf.nsg_graph.K = 200;
@@ -266,7 +268,15 @@ static void run_create_graph_test(const Dataset& ds,
     std::string log_path = paths.graph_log_file(cg);
 
     log("\n=== %s Test ===\n", test_name.c_str());
-    log("Settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u\n", cg.K, cg.L, cg.iter, cg.S, cg.R, cg.nTrees, cg.mLevel);
+    log("Settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, mLevel=%u, anns_repeat=%u\n",
+        cg.K,
+        cg.L,
+        cg.iter,
+        cg.S,
+        cg.R,
+        cg.nTrees,
+        cg.mLevel,
+        cg.anns_repeat);
     log("Graph: %s\n", graph_path.c_str());
     log("Log: %s\n", log_path.c_str());
 
@@ -321,7 +331,7 @@ int main(int argc, char** argv) {
     const auto data_path = std::filesystem::path(DATA_PATH);
     log("data_path %s\n", data_path.string().c_str());
 
-    DatasetName ds_name = DatasetName::AUDIO;
+    DatasetName ds_name = DatasetName::ALL;
     std::string test_type_arg = "all";
     std::string data_root = data_path.string();
     bool do_run = true;
@@ -383,15 +393,6 @@ int main(int argc, char** argv) {
             log("Graph directory: %s\n", graph_paths.graph_directory().c_str());
             log("Ground truth (full): %s\n", ds.groundtruth_file_full().c_str());
             log("Ground truth (half): %s\n", ds.groundtruth_file_half().c_str());
-            log("Build settings: K=%u, L=%u, iter=%u, S=%u, R=%u, nTrees=%u, "
-                "mLevel=%u\n",
-                config.create_graph.K,
-                config.create_graph.L,
-                config.create_graph.iter,
-                config.create_graph.S,
-                config.create_graph.R,
-                config.create_graph.nTrees,
-                config.create_graph.mLevel);
 
             if (do_run) {
                 if (!std::filesystem::exists(ds.base_file())) {

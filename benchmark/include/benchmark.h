@@ -1,14 +1,15 @@
 #pragma once
 
-#include <algorithm>
-#include <vector>
-#include <unordered_set>
-
 #include <efanna2e/index_graph.h>
 #include <efanna2e/parameters.h>
 
-#include "stopwatch.h"
+#include <algorithm>
+#include <unordered_set>
+#include <vector>
+
 #include "logging.h"
+#include "stopwatch.h"
+
 
 namespace efanna::benchmark {
 
@@ -57,12 +58,10 @@ static void test_graph_anns(efanna2e::IndexGraph* graph,
             }
         }
 
-        float recall = static_cast<float>(correct) / static_cast<float>(repeat) 
-                     / (static_cast<float>(query_count) * static_cast<float>(k));
+        float recall = static_cast<float>(correct) / static_cast<float>(repeat) / (static_cast<float>(query_count) * static_cast<float>(k));
         auto time_us_per_query = stopw.getElapsedTimeMicro() / (query_count * repeat);
 
-        log("L_search %5u, recall %.4f, time_us_per_query %8lld\n", 
-            L_search, recall, static_cast<long long>(time_us_per_query));
+        log("L_search %5u, recall %.4f, time_us_per_query %8lld\n", L_search, recall, static_cast<long long>(time_us_per_query));
 
         // Early exit if recall target reached
         if (recall >= recall_target) {
@@ -84,8 +83,7 @@ static void test_graph_explore(efanna2e::IndexGraph* graph,
     log("Testing Exploration (k=%u)...\n", k);
 
     if (entry_node_indices.size() != query_count) {
-        log("Exploration Test aborted: entry_node_indices size (%zu) != queries size (%zu)\n",
-            entry_node_indices.size(), query_count);
+        log("Exploration Test aborted: entry_node_indices size (%zu) != queries size (%zu)\n", entry_node_indices.size(), query_count);
         return;
     }
 
@@ -97,6 +95,7 @@ static void test_graph_explore(efanna2e::IndexGraph* graph,
     }
 
     std::vector<unsigned> result(k);
+    float last_recall = -1.0f;
 
     uint32_t k_factor = 100;
     for (uint32_t f = 0; f <= 2; f++, k_factor *= 10) {
@@ -127,7 +126,16 @@ static void test_graph_explore(efanna2e::IndexGraph* graph,
             const uint64_t time_us_per_query = query_count > 0 ? (stopw.getElapsedTimeMicro() / query_count) : 0;
 
             log("k %5u, max_distance_count %6u, recall %.4f, time_us_per_query %6llu\n",
-                k, max_distance_count, recall, static_cast<unsigned long long>(time_us_per_query));
+                k,
+                max_distance_count,
+                recall,
+                static_cast<unsigned long long>(time_us_per_query));
+
+            if (recall == last_recall) {
+                log("Recall stabilized at %.4f, stopping exploration sweep\n", recall);
+                return;
+            }
+            last_recall = recall;
 
             // Early exit if recall target reached
             if (recall >= recall_target) {
@@ -138,4 +146,4 @@ static void test_graph_explore(efanna2e::IndexGraph* graph,
     }
 }
 
-} // namespace efanna::benchmark
+}  // namespace efanna::benchmark

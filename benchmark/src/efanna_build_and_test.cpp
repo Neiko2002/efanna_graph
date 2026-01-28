@@ -80,7 +80,7 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.iter = 12;
         conf.create_graph.S = 15;
         conf.create_graph.R = 200;
-        conf.create_graph.L_search = {300, 800, 1000, 2000, 4000, 8000, 16000, 32000};
+        conf.create_graph.L_search = {100, 300, 800, 1000, 2000, 4000, 8000, 16000};
 
         conf.nsg_graph = conf.create_graph;
         conf.nsg_graph.K = 400;
@@ -103,7 +103,7 @@ static DatasetConfig get_dataset_config(const DatasetName& dataset_name) {
         conf.create_graph.R = 150;
         conf.create_graph.nTrees = 4;
         conf.create_graph.mLevel = 8;
-        conf.create_graph.L_search = {500, 800, 1200, 3000, 6000};
+        conf.create_graph.L_search = {100, 250, 350, 600, 1200, 2000, 3000, 6000};
         conf.create_graph.anns_repeat = 5;
 
         conf.nsg_graph = conf.create_graph;
@@ -173,8 +173,7 @@ struct GraphPaths {
 };
 
 static void run_graph_stats(efanna2e::IndexGraph* index, const Dataset& ds, bool use_half_gt) {
-    const std::string gt_file = use_half_gt ? (ds.files_dir() / ds.info().base_groundtruth_half_file).string()
-                                            : (ds.files_dir() / ds.info().base_groundtruth_file).string();
+    const std::string gt_file = ds.base_groundtruth_file(use_half_gt);
 
     if (std::filesystem::exists(gt_file)) {
         statistics::compute_stats(index, gt_file.c_str());
@@ -204,9 +203,8 @@ static void run_explore_test(efanna2e::IndexGraph* index,
                              size_t dim,
                              const CreateGraphParams& cg,
                              bool use_half_gt) {
-    std::string entry_file = (ds.files_dir() / ds.info().explore_entry_vertex_file).string();
-    const std::string explore_gt_file = use_half_gt ? (ds.files_dir() / ds.info().explore_groundtruth_half_file).string()
-                                                    : (ds.files_dir() / ds.info().explore_groundtruth_file).string();
+    std::string entry_file = ds.explore_entry_vertex_file();
+    const std::string explore_gt_file = ds.explore_groundtruth_file(use_half_gt);
     std::string explore_query_file = ds.explore_query_file();
 
     // Check if all required files exist
@@ -391,8 +389,10 @@ int main(int argc, char** argv) {
             log("Repository file: %s\n", ds.base_file().c_str());
             log("Query file: %s\n", ds.query_file().c_str());
             log("Graph directory: %s\n", graph_paths.graph_directory().c_str());
-            log("Ground truth (full): %s\n", ds.groundtruth_file_full().c_str());
-            log("Ground truth (half): %s\n", ds.groundtruth_file_half().c_str());
+            log("Query GT (full): %s\n", ds.query_groundtruth_file_full().c_str());
+            log("Query GT (half): %s\n", ds.query_groundtruth_file_half().c_str());
+            log("Base GT (full): %s\n", ds.base_groundtruth_file(false).c_str());
+            log("Explore GT (full): %s\n", ds.explore_groundtruth_file(false).c_str());
 
             if (do_run) {
                 if (!std::filesystem::exists(ds.base_file())) {
@@ -403,13 +403,12 @@ int main(int argc, char** argv) {
                     log("Missing query file: %s\n", ds.query_file().c_str());
                     return 1;
                 }
-                // Avoid std::abort later: check groundtruth upfront.
-                if (!std::filesystem::exists(ds.groundtruth_file_full())) {
-                    log("Missing groundtruth (full): %s\n", ds.groundtruth_file_full().c_str());
+                if (!std::filesystem::exists(ds.query_groundtruth_file_full())) {
+                    log("Missing query groundtruth (full): %s\n", ds.query_groundtruth_file_full().c_str());
                     return 1;
                 }
-                if (!std::filesystem::exists(ds.groundtruth_file_half())) {
-                    log("Missing groundtruth (half): %s\n", ds.groundtruth_file_half().c_str());
+                if (!std::filesystem::exists(ds.query_groundtruth_file_half())) {
+                    log("Missing query groundtruth (half): %s\n", ds.query_groundtruth_file_half().c_str());
                     return 1;
                 }
 

@@ -1,29 +1,25 @@
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <vector>
+#include <efanna2e/util.h>
+
+#include <algorithm>
 #include <array>
 #include <cstdint>
-#include <algorithm>
-#include <future>
 #include <cstdlib>
-
-#include <efanna2e/util.h>
+#include <filesystem>
+#include <future>
+#include <string>
+#include <vector>
 
 #include "file_io.h"
 #include "logging.h"
 
 namespace efanna::benchmark {
 
-enum class Metric {
-    L2,
-    InnerProduct,
-    Cosine
-};
+enum class Metric { L2, InnerProduct, Cosine };
 
 // Parallel for implementation
-template<typename Func>
+template <typename Func>
 void parallel_for(size_t start, size_t end, size_t num_threads, Func func) {
     if (num_threads <= 1) {
         for (size_t i = start; i < end; ++i) {
@@ -119,11 +115,6 @@ struct DatasetInfo {
     std::string base_file;
     std::string query_file;
     std::string explore_query_file;
-    std::string explore_entry_vertex_file;
-    std::string explore_groundtruth_file;
-    std::string explore_groundtruth_half_file;
-    std::string base_groundtruth_file;
-    std::string base_groundtruth_half_file;
 
     static constexpr size_t EXPLORE_SAMPLE_COUNT = 10000;
     static constexpr uint32_t EXPLORE_TOPK = 1000;
@@ -134,18 +125,13 @@ struct DatasetInfo {
 };
 
 inline DatasetInfo make_dataset_info(const DatasetName& ds) {
-    DatasetInfo info{ds, Metric::L2, 0, 0, 0, 1, 2, {}, {}, {}, {}, {}, {}, {}, {}};
+    DatasetInfo info{ds, Metric::L2, 0, 0, 0, 1, 2, {}, {}, {}};
 
     std::string name = ds.name();
 
     info.base_file = name + "_base.fvecs";
     info.query_file = name + "_query.fvecs";
     info.explore_query_file = name + "_explore_query.fvecs";
-    info.explore_entry_vertex_file = name + "_explore_entry_vertex.ivecs";
-    info.explore_groundtruth_file = name + "_explore_groundtruth_top1000.ivecs";
-    info.explore_groundtruth_half_file = name + "_explore_groundtruth_half_top1000.ivecs";
-    info.base_groundtruth_file = name + "_base_top1000.ivecs";
-    info.base_groundtruth_half_file = name + "_base_half_top1000.ivecs";
 
     if (ds == DatasetName::SIFT1M) {
         info.base_count = 1000000;
@@ -185,14 +171,14 @@ struct LoadedData {
     float* data;
     unsigned num;
     unsigned dim;
-    
+
     LoadedData() : data(nullptr), num(0), dim(0) {}
     LoadedData(float* d, unsigned n, unsigned dm) : data(d), num(n), dim(dm) {}
-    
+
     ~LoadedData() {
         // Note: data is owned by caller after align, do not delete here
     }
-    
+
     // Align data for SIMD operations
     void align() {
         if (data) {
@@ -204,12 +190,11 @@ struct LoadedData {
 class Dataset {
 public:
     Dataset(const DatasetName& name, const std::filesystem::path& data_root)
-        : name_(name)
-        , data_root_(data_root)
-        , dataset_dir_(data_root / name.name())
-        , files_dir_(data_root / name.name() / name.name())
-        , info_(name.info())
-    {}
+        : name_(name),
+          data_root_(data_root),
+          dataset_dir_(data_root / name.name()),
+          files_dir_(data_root / name.name() / name.name()),
+          info_(name.info()) {}
 
     const DatasetName& dataset_name() const { return name_; }
     const char* name() const { return name_.name(); }
@@ -223,11 +208,26 @@ public:
     std::string base_file() const { return (files_dir_ / info_.base_file).string(); }
     std::string query_file() const { return (files_dir_ / info_.query_file).string(); }
 
-    std::string groundtruth_file(size_t nb) const {
-        return (files_dir_ / (name_.name() + std::string("_groundtruth_top") + std::to_string(DatasetInfo::GROUNDTRUTH_TOPK) + "_nb" + std::to_string(nb) + ".ivecs")).string();
+    std::string query_groundtruth_file(size_t nb) const {
+        return (files_dir_ / (std::string(name_.name()) + "_groundtruth_top" + std::to_string(DatasetInfo::GROUNDTRUTH_TOPK) + "_nb" +
+                              std::to_string(nb) + ".ivecs"))
+            .string();
     }
-    std::string groundtruth_file_full() const { return groundtruth_file(info_.base_count); }
-    std::string groundtruth_file_half() const { return groundtruth_file(info_.base_count / 2); }
+    std::string query_groundtruth_file_full() const { return query_groundtruth_file(info_.base_count); }
+    std::string query_groundtruth_file_half() const { return query_groundtruth_file(info_.base_count / 2); }
+
+    std::string base_groundtruth_file(bool half) const {
+        std::string suffix = half ? "_base_half_top1000.ivecs" : "_base_top1000.ivecs";
+        return (files_dir_ / (std::string(name_.name()) + suffix)).string();
+    }
+
+    std::string explore_groundtruth_file(bool half) const {
+        std::string suffix = half ? "_explore_groundtruth_half_top1000.ivecs" : "_explore_groundtruth_top1000.ivecs";
+        return (files_dir_ / (std::string(name_.name()) + suffix)).string();
+    }
+    std::string explore_entry_vertex_file() const {
+        return (files_dir_ / (std::string(name_.name()) + "_explore_entry_vertex.ivecs")).string();
+    }
 
     // Load base data with alignment
     LoadedData load_base() const {
@@ -247,9 +247,7 @@ public:
         return ld;
     }
 
-    std::string explore_query_file() const { 
-        return (files_dir_ / info_.explore_query_file).string(); 
-    }
+    std::string explore_query_file() const { return (files_dir_ / info_.explore_query_file).string(); }
 
     LoadedData load_explore_query() const {
         unsigned num = 0, dim = 0;
@@ -260,7 +258,7 @@ public:
     }
 
     std::vector<std::vector<uint32_t>> load_groundtruth(size_t k, bool use_half_dataset = false) const {
-        std::string gt_file = use_half_dataset ? groundtruth_file_half() : groundtruth_file_full();
+        std::string gt_file = use_half_dataset ? query_groundtruth_file_half() : query_groundtruth_file_full();
         return load_groundtruth_from_file(gt_file, k);
     }
 
@@ -301,4 +299,4 @@ private:
     DatasetInfo info_;
 };
 
-} // namespace efanna::benchmark
+}  // namespace efanna::benchmark
